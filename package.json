@@ -1,0 +1,20 @@
+{
+  "name": "elixir-phoenix",
+  "version": "1.0.4",
+  "description": "Phoenix framework client js library",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VladShcherbin/elixir-phoenix.git"
+  },
+  "keywords": [
+    "phoenix",
+    "elixir"
+  ],
+  "author": "Vlad Shcherbin <vlad.shcherbin@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/VladShcherbin/elixir-phoenix/issues"
+  },
+  "homepage": "https://github.com/VladShcherbin/elixir-phoenix#readme"
+}
