@@ -1,6 +1,6 @@
 {
   "name": "phoenix-elixir",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Phoenix framework client js library",
   "main": "src/index.js",
   "repository": {
