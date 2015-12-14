@@ -198,7 +198,7 @@ class Push {
   }
 }
 
-class Channel {
+export class Channel {
   constructor(topic, params, socket) {
     this.state       = CHANNEL_STATES.closed
     this.topic       = topic
@@ -336,7 +336,7 @@ class Channel {
   replyEventName(ref){ return `chan_reply_${ref}` }
 }
 
-class Socket {
+export class Socket {
 
   // Initializes the Socket
   //
@@ -528,7 +528,7 @@ class Socket {
 }
 
 
-class LongPoll {
+export class LongPoll {
 
   constructor(endPoint){
     this.endPoint        = null
@@ -615,7 +615,7 @@ class LongPoll {
 }
 
 
-class Ajax {
+export class Ajax {
 
   static request(method, endPoint, accept, body, timeout, ontimeout, callback){
     if(window.XDomainRequest){
@@ -727,10 +727,3 @@ class Timer {
   }, this.timerCalc(this.tries + 1))
   }
 }
-
-module.exports = {
-  Channel,
-  Socket,
-  LongPoll,
-  Ajax
-};
