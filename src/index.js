@@ -39,8 +39,9 @@
 //
 // ## Joining
 //
-// Joining a channel with `channel.join(topic, params)`, binds the params to
-// `channel.params`. Subsequent rejoins will send up the modified params for
+// Creating a channel with `socket.channel(topic, params)`, binds the params to
+// `channel.params`, which are sent up on `channel.join()`.
+// Subsequent rejoins will send up the modified params for
 // updating authorization params, or passing up last_message_id information.
 // Successful joins receive an "ok" status, while unsuccessful joins
 // receive "error".
@@ -52,7 +53,7 @@
 // can be done with `channel.push(eventName, payload)` and we can optionally
 // receive responses from the push. Additionally, we can use
 // `receive("timeout", callback)` to abort waiting for our other `receive` hooks
-//  and take action after some period of waiting.
+//  and take action after some period of waiting. The default timeout is 5000ms.
 //
 //
 // ## Socket Hooks
@@ -161,7 +162,7 @@ class Push {
 
   matchReceive({status, response, ref}){
     this.recHooks.filter( h => h.status === status )
-  .forEach( h => h.callback(response) )
+                 .forEach( h => h.callback(response) )
   }
 
   cancelRefEvent(){ if(!this.refEvent){ return }
@@ -179,14 +180,14 @@ class Push {
 
     this.channel.on(this.refEvent, payload => {
       this.cancelRefEvent()
-    this.cancelTimeout()
-    this.receivedResp = payload
-    this.matchReceive(payload)
-  })
+      this.cancelTimeout()
+      this.receivedResp = payload
+      this.matchReceive(payload)
+    })
 
     this.timeoutTimer = setTimeout(() => {
-        this.trigger("timeout", {})
-  }, this.timeout)
+      this.trigger("timeout", {})
+    }, this.timeout)
   }
 
   hasReceived(status){
@@ -210,39 +211,39 @@ export class Channel {
     this.joinPush    = new Push(this, CHANNEL_EVENTS.join, this.params, this.timeout)
     this.pushBuffer  = []
     this.rejoinTimer  = new Timer(
-        () => this.rejoinUntilConnected(),
+      () => this.rejoinUntilConnected(),
       this.socket.reconnectAfterMs
-  )
+    )
     this.joinPush.receive("ok", () => {
       this.state = CHANNEL_STATES.joined
-    this.rejoinTimer.reset()
-    this.pushBuffer.forEach( pushEvent => pushEvent.send() )
-    this.pushBuffer = []
-  })
+      this.rejoinTimer.reset()
+      this.pushBuffer.forEach( pushEvent => pushEvent.send() )
+      this.pushBuffer = []
+    })
     this.onClose( () => {
       this.socket.log("channel", `close ${this.topic}`)
-    this.state = CHANNEL_STATES.closed
-    this.socket.remove(this)
-  })
+      this.state = CHANNEL_STATES.closed
+      this.socket.remove(this)
+    })
     this.onError( reason => {
       this.socket.log("channel", `error ${this.topic}`, reason)
-    this.state = CHANNEL_STATES.errored
-    this.rejoinTimer.setTimeout()
-  })
+      this.state = CHANNEL_STATES.errored
+      this.rejoinTimer.scheduleTimeout()
+    })
     this.joinPush.receive("timeout", () => {
       if(this.state !== CHANNEL_STATES.joining){ return }
 
-    this.socket.log("channel", `timeout ${this.topic}`, this.joinPush.timeout)
-    this.state = CHANNEL_STATES.errored
-    this.rejoinTimer.setTimeout()
-  })
+      this.socket.log("channel", `timeout ${this.topic}`, this.joinPush.timeout)
+      this.state = CHANNEL_STATES.errored
+      this.rejoinTimer.scheduleTimeout()
+    })
     this.on(CHANNEL_EVENTS.reply, (payload, ref) => {
       this.trigger(this.replyEventName(ref), payload)
-  })
+    })
   }
 
   rejoinUntilConnected(){
-    this.rejoinTimer.setTimeout()
+    this.rejoinTimer.scheduleTimeout()
     if(this.socket.isConnected()){
       this.rejoin()
     }
@@ -304,7 +305,7 @@ export class Channel {
     }
     let leavePush = new Push(this, CHANNEL_EVENTS.leave, {}, timeout)
     leavePush.receive("ok", () => onClose() )
-  .receive("timeout", () => onClose() )
+             .receive("timeout", () => onClose() )
     leavePush.send()
     if(!this.canPush()){ leavePush.trigger("ok", {}) }
 
@@ -330,7 +331,7 @@ export class Channel {
   trigger(triggerEvent, payload, ref){
     this.onMessage(triggerEvent, payload, ref)
     this.bindings.filter( bind => bind.event === triggerEvent )
-  .map( bind => bind.callback(payload, ref) )
+                 .map( bind => bind.callback(payload, ref) )
   }
 
   replyEventName(ref){ return `chan_reply_${ref}` }
@@ -375,15 +376,15 @@ export class Socket {
     this.transport            = opts.transport || window.WebSocket || LongPoll
     this.heartbeatIntervalMs  = opts.heartbeatIntervalMs || 30000
     this.reconnectAfterMs     = opts.reconnectAfterMs || function(tries){
-        return [1000, 2000, 5000, 10000][tries - 1] || 10000
-      }
+      return [1000, 2000, 5000, 10000][tries - 1] || 10000
+    }
     this.logger               = opts.logger || function(){} // noop
     this.longpollerTimeout    = opts.longpollerTimeout || 20000
     this.params               = opts.params || {}
     this.endPoint             = `${endPoint}/${TRANSPORTS.websocket}`
     this.reconnectTimer       = new Timer(() => {
-        this.disconnect(() => this.connect())
-  }, this.reconnectAfterMs)
+      this.disconnect(() => this.connect())
+    }, this.reconnectAfterMs)
   }
 
   protocol(){ return location.protocol.match(/^https/) ? "wss" : "ws" }
@@ -451,7 +452,7 @@ export class Socket {
     this.log("transport", "close", event)
     this.triggerChanError()
     clearInterval(this.heartbeatTimer)
-    this.reconnectTimer.setTimeout()
+    this.reconnectTimer.scheduleTimeout()
     this.stateChangeCallbacks.close.forEach( callback => callback(event) )
   }
 
@@ -522,7 +523,7 @@ export class Socket {
     let {topic, event, payload, ref} = msg
     this.log("receive", `${payload.status || ""} ${topic} ${event} ${ref && "(" + ref + ")" || ""}`, payload)
     this.channels.filter( channel => channel.isMember(topic) )
-  .forEach( channel => channel.trigger(event, payload, ref) )
+                 .forEach( channel => channel.trigger(event, payload, ref) )
     this.stateChangeCallbacks.message.forEach( callback => callback(msg) )
   }
 }
@@ -570,42 +571,42 @@ export class LongPoll {
 
     Ajax.request("GET", this.endpointURL(), "application/json", null, this.timeout, this.ontimeout.bind(this), (resp) => {
       if(resp){
-      var {status, token, messages} = resp
-      this.token = token
-    } else{
-      var status = 0
-    }
+        var {status, token, messages} = resp
+        this.token = token
+      } else{
+        var status = 0
+      }
 
-    switch(status){
-      case 200:
-        messages.forEach( msg => this.onmessage({data: JSON.stringify(msg)}) )
-        this.poll()
-        break
-      case 204:
-        this.poll()
-        break
-      case 410:
-        this.readyState = SOCKET_STATES.open
-        this.onopen()
-        this.poll()
-        break
-      case 0:
-      case 500:
-        this.onerror()
-        this.closeAndRetry()
-        break
-      default: throw(`unhandled poll status ${status}`)
-    }
-  })
+      switch(status){
+        case 200:
+          messages.forEach( msg => this.onmessage({data: JSON.stringify(msg)}) )
+          this.poll()
+          break
+        case 204:
+          this.poll()
+          break
+        case 410:
+          this.readyState = SOCKET_STATES.open
+          this.onopen()
+          this.poll()
+          break
+        case 0:
+        case 500:
+          this.onerror()
+          this.closeAndRetry()
+          break
+        default: throw(`unhandled poll status ${status}`)
+      }
+    })
   }
 
   send(body){
     Ajax.request("POST", this.endpointURL(), "application/json", body, this.timeout, this.onerror.bind(this, "timeout"), (resp) => {
       if(!resp || resp.status !== 200){
-      this.onerror(status)
-      this.closeAndRetry()
-    }
-  })
+        this.onerror(status)
+        this.closeAndRetry()
+      }
+    })
   }
 
   close(code, reason){
@@ -623,8 +624,8 @@ export class Ajax {
       this.xdomainRequest(req, method, endPoint, body, timeout, ontimeout, callback)
     } else {
       let req = window.XMLHttpRequest ?
-        new XMLHttpRequest() : // IE7+, Firefox, Chrome, Opera, Safari
-        new ActiveXObject("Microsoft.XMLHTTP") // IE6, IE5
+                  new XMLHttpRequest() : // IE7+, Firefox, Chrome, Opera, Safari
+                  new ActiveXObject("Microsoft.XMLHTTP") // IE6, IE5
       this.xhrRequest(req, method, endPoint, accept, body, timeout, ontimeout, callback)
     }
   }
@@ -662,8 +663,8 @@ export class Ajax {
 
   static parseJSON(resp){
     return (resp && resp !== "") ?
-      JSON.parse(resp) :
-      null
+             JSON.parse(resp) :
+             null
   }
 
   static serialize(obj, parentKey){
@@ -699,10 +700,10 @@ Ajax.states = {complete: 4}
 //    let reconnectTimer = new Timer(() => this.connect(), function(tries){
 //      return [1000, 5000, 10000][tries - 1] || 10000
 //    })
-//    reconnectTimer.setTimeout() // fires after 1000
-//    reconnectTimer.setTimeout() // fires after 5000
+//    reconnectTimer.scheduleTimeout() // fires after 1000
+//    reconnectTimer.scheduleTimeout() // fires after 5000
 //    reconnectTimer.reset()
-//    reconnectTimer.setTimeout() // fires after 1000
+//    reconnectTimer.scheduleTimeout() // fires after 1000
 //
 class Timer {
   constructor(callback, timerCalc){
@@ -717,13 +718,13 @@ class Timer {
     clearTimeout(this.timer)
   }
 
-  // Cancels any previous setTimeout and schedules callback
-  setTimeout(){
+  // Cancels any previous scheduleTimeout and schedules callback
+  scheduleTimeout(){
     clearTimeout(this.timer)
 
     this.timer = setTimeout(() => {
       this.tries = this.tries + 1
-    this.callback()
-  }, this.timerCalc(this.tries + 1))
+      this.callback()
+    }, this.timerCalc(this.tries + 1))
   }
 }
