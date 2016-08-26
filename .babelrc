@@ -1,6 +1,10 @@
 {
-  "presets": ["es2015", "stage-0"],
-  "plugins": [
-    "add-module-exports"
-  ]
+  "env": {
+    "cjs": {
+      "presets": [["es2015", {"loose": true}]]
+    },
+    "es": {
+      "presets": [["es2015", {"loose": true, "modules": false}]]
+    }
+  }
 }
